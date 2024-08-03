@@ -1,8 +1,8 @@
 /**
-* @file include/retdec/llvmir2hll/optimizer/optimizer_manager.h
-* @brief A manager managing optimizations.
-* @copyright (c) 2017 Avast Software, licensed under the MIT license
-*/
+ * @file include/retdec/llvmir2hll/optimizer/optimizer_manager.h
+ * @brief A manager managing optimizations.
+ * @copyright (c) 2017 Avast Software, licensed under the MIT license
+ */
 
 #ifndef RETDEC_LLVMIR2HLL_OPTIMIZER_OPTIMIZER_MANAGER_H
 #define RETDEC_LLVMIR2HLL_OPTIMIZER_OPTIMIZER_MANAGER_H
@@ -22,56 +22,57 @@ class Module;
 class ValueAnalysis;
 
 /**
-* @brief A manager managing optimizations.
-*
-* Instances of this class have reference object semantics. This class is not
-* meant to be subclassed.
-*/
-class OptimizerManager final: private retdec::utils::NonCopyable {
+ * @brief A manager managing optimizations.
+ *
+ * Instances of this class have reference object semantics. This class is not
+ * meant to be subclassed.
+ */
+class OptimizerManager final : private retdec::utils::NonCopyable {
 public:
-    OptimizerManager(const StringSet &enabledOpts, const StringSet &disabledOpts,
-                     ShPtr<HLLWriter> hllWriter, ShPtr<ValueAnalysis> va,
-                     ShPtr<CallInfoObtainer> cio, ShPtr<ArithmExprEvaluator> arithmExprEvaluator,
-                     bool enableDebug = false);
+  OptimizerManager(const StringSet &enabledOpts, const StringSet &disabledOpts,
+                   ShPtr<HLLWriter> hllWriter, ShPtr<ValueAnalysis> va,
+                   ShPtr<CallInfoObtainer> cio,
+                   ShPtr<ArithmExprEvaluator> arithmExprEvaluator,
+                   bool enableDebug = false);
 
-    void optimize(ShPtr<Module> m);
-
-private:
-    void printOptimization(const std::string &optName) const;
-    bool optShouldBeRun(const std::string &optName) const;
-    void runOptimizerProvidedItShouldBeRun(ShPtr<Optimizer> optimizer);
-    bool shouldSecondCopyPropagationBeRun() const;
-
-    template<typename Optimization, typename... Args>
-    void run(ShPtr<Module> m, Args &&... args);
+  void optimize(ShPtr<Module> m);
 
 private:
-    /// No other optimization than these will be run.
-    const StringSet enabledOpts;
+  void printOptimization(const std::string &optName) const;
+  bool optShouldBeRun(const std::string &optName) const;
+  void runOptimizerProvidedItShouldBeRun(ShPtr<Optimizer> optimizer);
+  bool shouldSecondCopyPropagationBeRun() const;
 
-    /// Optimizations that won't be run.
-    const StringSet disabledOpts;
+  template <typename Optimization, typename... Args>
+  void run(ShPtr<Module> m, Args &&...args);
 
-    /// Used HLL writer.
-    ShPtr<HLLWriter> hllWriter;
+private:
+  /// No other optimization than these will be run.
+  const StringSet enabledOpts;
 
-    /// Used value analysis.
-    ShPtr<ValueAnalysis> va;
+  /// Optimizations that won't be run.
+  const StringSet disabledOpts;
 
-    /// Used call info obtainer.
-    ShPtr<CallInfoObtainer> cio;
+  /// Used HLL writer.
+  ShPtr<HLLWriter> hllWriter;
 
-    /// Used evaluator of arithmetical expressions.
-    ShPtr<ArithmExprEvaluator> arithmExprEvaluator;
+  /// Used value analysis.
+  ShPtr<ValueAnalysis> va;
 
-    /// Enable emission of debug messages?
-    bool enableDebug;
+  /// Used call info obtainer.
+  ShPtr<CallInfoObtainer> cio;
 
-    /// Should we recover from out-of-memory errors during optimizations?
-    bool recoverFromOutOfMemory;
+  /// Used evaluator of arithmetical expressions.
+  ShPtr<ArithmExprEvaluator> arithmExprEvaluator;
 
-    /// List of our optimizations that were run.
-    StringSet backendRunOpts;
+  /// Enable emission of debug messages?
+  bool enableDebug;
+
+  /// Should we recover from out-of-memory errors during optimizations?
+  bool recoverFromOutOfMemory;
+
+  /// List of our optimizations that were run.
+  StringSet backendRunOpts;
 };
 
 } // namespace llvmir2hll
