@@ -103,83 +103,83 @@ namespace llvmir2hll {
 class LlvmIr2Hll: public llvm::ModulePass
 {
 public:
-	static char ID;
-	LlvmIr2Hll(retdec::config::Config* c = nullptr);
-	virtual void getAnalysisUsage(llvm::AnalysisUsage &au) const override;
-	virtual bool runOnModule(llvm::Module &m) override;
+    static char ID;
+    LlvmIr2Hll(retdec::config::Config* c = nullptr);
+    virtual void getAnalysisUsage(llvm::AnalysisUsage &au) const override;
+    virtual bool runOnModule(llvm::Module &m) override;
 
-	void setConfig(retdec::config::Config* c);
-	void setOutputString(std::string* outString);
-
-private:
-	bool initialize(llvm::Module &m);
-	void createSemantics();
-	void createSemanticsFromParameter();
-	void createSemanticsFromLLVMIR();
-	bool loadConfig();
-	void saveConfig();
-	bool convertLLVMIRToBIR();
-	void removeLibraryFuncs();
-	void removeCodeUnreachableInCFG();
-	void fixSignedUnsignedTypes();
-	void convertLLVMIntrinsicFunctions();
-	void obtainDebugInfo();
-	void initAliasAnalysis();
-	void runOptimizations();
-	void renameVariables();
-	void convertConstantsToSymbolicNames();
-	void validateResultingModule();
-	void findPatterns();
-	void emitCFGs();
-	void emitCG();
-	void emitTargetHLLCode();
-	void finalize();
-	void cleanup();
-
-	llvmir2hll::StringSet parseListOfOpts(
-			const std::string &opts) const;
-	llvmir2hll::StringVector getIdsOfPatternFindersToBeRun() const;
-	llvmir2hll::PatternFinderRunner::PatternFinders instantiatePatternFinders(
-		const llvmir2hll::StringVector &pfsIds);
-	ShPtr<llvmir2hll::PatternFinderRunner> instantiatePatternFinderRunner() const;
+    void setConfig(retdec::config::Config* c);
+    void setOutputString(std::string* outString);
 
 private:
-	/// The input LLVM module.
-	llvm::Module *llvmModule = nullptr;
+    bool initialize(llvm::Module &m);
+    void createSemantics();
+    void createSemanticsFromParameter();
+    void createSemanticsFromLLVMIR();
+    bool loadConfig();
+    void saveConfig();
+    bool convertLLVMIRToBIR();
+    void removeLibraryFuncs();
+    void removeCodeUnreachableInCFG();
+    void fixSignedUnsignedTypes();
+    void convertLLVMIntrinsicFunctions();
+    void obtainDebugInfo();
+    void initAliasAnalysis();
+    void runOptimizations();
+    void renameVariables();
+    void convertConstantsToSymbolicNames();
+    void validateResultingModule();
+    void findPatterns();
+    void emitCFGs();
+    void emitCG();
+    void emitTargetHLLCode();
+    void finalize();
+    void cleanup();
 
-	/// The resulting module in BIR.
-	ShPtr<llvmir2hll::Module> resModule;
+    llvmir2hll::StringSet parseListOfOpts(
+        const std::string &opts) const;
+    llvmir2hll::StringVector getIdsOfPatternFindersToBeRun() const;
+    llvmir2hll::PatternFinderRunner::PatternFinders instantiatePatternFinders(
+        const llvmir2hll::StringVector &pfsIds);
+    ShPtr<llvmir2hll::PatternFinderRunner> instantiatePatternFinderRunner() const;
 
-	/// The used semantics.
-	ShPtr<llvmir2hll::Semantics> semantics;
+private:
+    /// The input LLVM module.
+    llvm::Module *llvmModule = nullptr;
 
-	/// The used config.
-	config::Config* globalConfig = nullptr;
-	ShPtr<llvmir2hll::Config> config;
+    /// The resulting module in BIR.
+    ShPtr<llvmir2hll::Module> resModule;
 
-	/// The used HLL writer.
-	ShPtr<llvmir2hll::HLLWriter> hllWriter;
+    /// The used semantics.
+    ShPtr<llvmir2hll::Semantics> semantics;
 
-	/// The used alias analysis.
-	ShPtr<llvmir2hll::AliasAnalysis> aliasAnalysis;
+    /// The used config.
+    config::Config* globalConfig = nullptr;
+    ShPtr<llvmir2hll::Config> config;
 
-	/// The used obtainer of information about function and function calls.
-	ShPtr<llvmir2hll::CallInfoObtainer> cio;
+    /// The used HLL writer.
+    ShPtr<llvmir2hll::HLLWriter> hllWriter;
 
-	/// The used evaluator of arithmetical expressions.
-	ShPtr<llvmir2hll::ArithmExprEvaluator> arithmExprEvaluator;
+    /// The used alias analysis.
+    ShPtr<llvmir2hll::AliasAnalysis> aliasAnalysis;
 
-	/// The used generator of variable names.
-	ShPtr<llvmir2hll::VarNameGen> varNameGen;
+    /// The used obtainer of information about function and function calls.
+    ShPtr<llvmir2hll::CallInfoObtainer> cio;
 
-	/// The used renamer of variables.
-	ShPtr<llvmir2hll::VarRenamer> varRenamer;
+    /// The used evaluator of arithmetical expressions.
+    ShPtr<llvmir2hll::ArithmExprEvaluator> arithmExprEvaluator;
 
-	/// Output file stream.
-	std::unique_ptr<llvm::ToolOutputFile> outFile;
+    /// The used generator of variable names.
+    ShPtr<llvmir2hll::VarNameGen> varNameGen;
 
-	/// Output string stream.
-	std::unique_ptr<llvm::raw_string_ostream> outStringStream;
+    /// The used renamer of variables.
+    ShPtr<llvmir2hll::VarRenamer> varRenamer;
+
+    /// Output file stream.
+    std::unique_ptr<llvm::ToolOutputFile> outFile;
+
+    /// Output string stream.
+    std::unique_ptr<llvm::raw_string_ostream> outStringStream;
 };
 
 } // namespace llvmir2hll

@@ -68,19 +68,19 @@ const std::string OPT_SUFFIX = "Optimizer";
 *        @a opts.
 */
 StringSet trimOptimizerSuffix(const StringSet &opts) {
-	StringSet result;
-	for (const auto &opt : opts) {
-		// Does the string contain the suffix?
-		if (opt.size() > OPT_SUFFIX.size() &&
-				opt.substr(opt.size() - OPT_SUFFIX.size()) == OPT_SUFFIX) {
-			// It does, so trim it.
-			result.insert(opt.substr(0, opt.size() - OPT_SUFFIX.size()));
-		} else {
-			// It doesn't.
-			result.insert(opt);
-		}
-	}
-	return result;
+    StringSet result;
+    for (const auto &opt : opts) {
+        // Does the string contain the suffix?
+        if (opt.size() > OPT_SUFFIX.size() &&
+                opt.substr(opt.size() - OPT_SUFFIX.size()) == OPT_SUFFIX) {
+            // It does, so trim it.
+            result.insert(opt.substr(0, opt.size() - OPT_SUFFIX.size()));
+        } else {
+            // It doesn't.
+            result.insert(opt);
+        }
+    }
+    return result;
 }
 
 } // anonymous namespace
@@ -114,140 +114,140 @@ StringSet trimOptimizerSuffix(const StringSet &opts) {
 *  - @a hllWriter, @a va, @a cio, and @a arithmExprEvaluator are non-null
 */
 OptimizerManager::OptimizerManager(const StringSet &enabledOpts,
-	const StringSet &disabledOpts, ShPtr<HLLWriter> hllWriter,
-	ShPtr<ValueAnalysis> va, ShPtr<CallInfoObtainer> cio,
-	ShPtr<ArithmExprEvaluator> arithmExprEvaluator, bool enableDebug):
-		enabledOpts(trimOptimizerSuffix(enabledOpts)),
-		disabledOpts(trimOptimizerSuffix(disabledOpts)),
-		hllWriter(hllWriter), va(va), cio(cio),
-		arithmExprEvaluator(arithmExprEvaluator),
-		enableDebug(enableDebug),
-		recoverFromOutOfMemory(true), backendRunOpts() {
-			PRECONDITION_NON_NULL(hllWriter);
-			PRECONDITION_NON_NULL(va);
-			PRECONDITION_NON_NULL(cio);
-			PRECONDITION_NON_NULL(arithmExprEvaluator);
-		}
+                                   const StringSet &disabledOpts, ShPtr<HLLWriter> hllWriter,
+                                   ShPtr<ValueAnalysis> va, ShPtr<CallInfoObtainer> cio,
+                                   ShPtr<ArithmExprEvaluator> arithmExprEvaluator, bool enableDebug):
+    enabledOpts(trimOptimizerSuffix(enabledOpts)),
+    disabledOpts(trimOptimizerSuffix(disabledOpts)),
+    hllWriter(hllWriter), va(va), cio(cio),
+    arithmExprEvaluator(arithmExprEvaluator),
+    enableDebug(enableDebug),
+    recoverFromOutOfMemory(true), backendRunOpts() {
+    PRECONDITION_NON_NULL(hllWriter);
+    PRECONDITION_NON_NULL(va);
+    PRECONDITION_NON_NULL(cio);
+    PRECONDITION_NON_NULL(arithmExprEvaluator);
+}
 
 /**
 * @brief Runs the optimizations over @a m.
 */
 void OptimizerManager::optimize(ShPtr<Module> m) {
-	// All optimizations should be run in order from the one that eliminates
-	// most statements/expressions to the one that eliminates least number of
-	// statements/expressions.
-	//
-	// Of course, if some optimization depend on another one, the order is
-	// clear.
+    // All optimizations should be run in order from the one that eliminates
+    // most statements/expressions to the one that eliminates least number of
+    // statements/expressions.
+    //
+    // Of course, if some optimization depend on another one, the order is
+    // clear.
 
-	//
-	// Perform HLL-independent optimizations.
-	//
-	if (!enableDebug) {
-		// Since we will not emit debug comments, empty statements are useless,
-		// so we can remove them.
-		run<EmptyStmtOptimizer>(m);
-	}
+    //
+    // Perform HLL-independent optimizations.
+    //
+    if (!enableDebug) {
+        // Since we will not emit debug comments, empty statements are useless,
+        // so we can remove them.
+        run<EmptyStmtOptimizer>(m);
+    }
 
-	run<GotoStmtOptimizer>(m);
-	run<RemoveUselessCastsOptimizer>(m);
+    run<GotoStmtOptimizer>(m);
+    run<RemoveUselessCastsOptimizer>(m);
 
-	// Data-flow optimizations.
-	// The following optimizations should be run before CopyPropagation to
-	// speed it up.
-	run<UnusedGlobalVarOptimizer>(m);
-	run<DeadLocalAssignOptimizer>(m, va);
-	run<SimpleCopyPropagationOptimizer>(m, va, cio);
-	run<CopyPropagationOptimizer>(m, va, cio);
+    // Data-flow optimizations.
+    // The following optimizations should be run before CopyPropagation to
+    // speed it up.
+    run<UnusedGlobalVarOptimizer>(m);
+    run<DeadLocalAssignOptimizer>(m, va);
+    run<SimpleCopyPropagationOptimizer>(m, va, cio);
+    run<CopyPropagationOptimizer>(m, va, cio);
 
-	// SimplifyArithmExprOptimizer should be run before loop optimizations.
-	run<SimplifyArithmExprOptimizer>(m, arithmExprEvaluator);
+    // SimplifyArithmExprOptimizer should be run before loop optimizations.
+    run<SimplifyArithmExprOptimizer>(m, arithmExprEvaluator);
 
-	// Structure optimizations.
-	// IfStructureOptimizer should be run before loop optimizations because
-	// it may make induction variables easier to find.
-	run<IfStructureOptimizer>(m);
-	// LoopLastContinueOptimizer should be run after IfStructureOptimizer
-	// because IfBeforeLoopOptimizer may introduce continue statements to the
-	// end of loops.
-	run<LoopLastContinueOptimizer>(m);
-	// PreWhileTrueLoopConvOptimizer should be run before other `while True`
-	// loop optimizers.
-	run<PreWhileTrueLoopConvOptimizer>(m, va);
-	// WhileTrueToForLoopOptimizer should be run before
-	// WhileTrueToWhileCondOptimizer.
-	run<WhileTrueToForLoopOptimizer>(m, va, arithmExprEvaluator);
-	// TODO The WhileTrueToUForLoopOptimizer does nothing at the moment, so it
-	//      makes no sense to run it.
-	#if 0
-	// WhileTrueToUForLoopOptimizer should be run after
-	// WhileTrueToForLoopOptimizer (WhileTrueToForLoopOptimizer may produce
-	// better results). Also, run it only for C because the Python HLL writer
-	// does not support emission of universal for loops.
-	if (hllWriter->getId() == "c") {
-		run<WhileTrueToUForLoopOptimizer>(m, va);
-	}
-	#endif
-	run<WhileTrueToWhileCondOptimizer>(m);
-	run<IfBeforeLoopOptimizer>(m, va);
+    // Structure optimizations.
+    // IfStructureOptimizer should be run before loop optimizations because
+    // it may make induction variables easier to find.
+    run<IfStructureOptimizer>(m);
+    // LoopLastContinueOptimizer should be run after IfStructureOptimizer
+    // because IfBeforeLoopOptimizer may introduce continue statements to the
+    // end of loops.
+    run<LoopLastContinueOptimizer>(m);
+    // PreWhileTrueLoopConvOptimizer should be run before other `while True`
+    // loop optimizers.
+    run<PreWhileTrueLoopConvOptimizer>(m, va);
+    // WhileTrueToForLoopOptimizer should be run before
+    // WhileTrueToWhileCondOptimizer.
+    run<WhileTrueToForLoopOptimizer>(m, va, arithmExprEvaluator);
+    // TODO The WhileTrueToUForLoopOptimizer does nothing at the moment, so it
+    //      makes no sense to run it.
+#if 0
+    // WhileTrueToUForLoopOptimizer should be run after
+    // WhileTrueToForLoopOptimizer (WhileTrueToForLoopOptimizer may produce
+    // better results). Also, run it only for C because the Python HLL writer
+    // does not support emission of universal for loops.
+    if (hllWriter->getId() == "c") {
+        run<WhileTrueToUForLoopOptimizer>(m, va);
+    }
+#endif
+    run<WhileTrueToWhileCondOptimizer>(m);
+    run<IfBeforeLoopOptimizer>(m, va);
 
-	// The second part of removal of non-compound statements.
-	run<LLVMIntrinsicsOptimizer>(m);
-	run<VoidReturnOptimizer>(m);
-	run<BreakContinueReturnOptimizer>(m);
+    // The second part of removal of non-compound statements.
+    run<LLVMIntrinsicsOptimizer>(m);
+    run<VoidReturnOptimizer>(m);
+    run<BreakContinueReturnOptimizer>(m);
 
-	// Expression optimizations.
-	run<BitShiftOptimizer>(m);
-	run<DerefAddressOptimizer>(m);
-	run<EmptyArrayToStringOptimizer>(m);
-	run<BitOpToLogOpOptimizer>(m, va);
-	run<SimplifyArithmExprOptimizer>(m, arithmExprEvaluator);
+    // Expression optimizations.
+    run<BitShiftOptimizer>(m);
+    run<DerefAddressOptimizer>(m);
+    run<EmptyArrayToStringOptimizer>(m);
+    run<BitOpToLogOpOptimizer>(m, va);
+    run<SimplifyArithmExprOptimizer>(m, arithmExprEvaluator);
 
-	// Data-flow optimizations.
-	// Run the CopyPropagationOptimizer once more to produce more readable
-	// output. However, do this only if an optimization different than
-	// CopyPropagation was run; otherwise, it makes no sense to run it again.
-	if (shouldSecondCopyPropagationBeRun()) {
-		run<UnusedGlobalVarOptimizer>(m);
-		run<DeadLocalAssignOptimizer>(m, va);
-		run<SimpleCopyPropagationOptimizer>(m, va, cio);
-		run<CopyPropagationOptimizer>(m, va, cio);
-	}
+    // Data-flow optimizations.
+    // Run the CopyPropagationOptimizer once more to produce more readable
+    // output. However, do this only if an optimization different than
+    // CopyPropagation was run; otherwise, it makes no sense to run it again.
+    if (shouldSecondCopyPropagationBeRun()) {
+        run<UnusedGlobalVarOptimizer>(m);
+        run<DeadLocalAssignOptimizer>(m, va);
+        run<SimpleCopyPropagationOptimizer>(m, va, cio);
+        run<CopyPropagationOptimizer>(m, va, cio);
+    }
 
-	// This is best to be run after DeadLocalAssignOptimizer and
-	// CopyPropagationOptimizer because it can get rid of statements like `v =
-	// v`, where v is a variable.
-	run<SelfAssignOptimizer>(m);
+    // This is best to be run after DeadLocalAssignOptimizer and
+    // CopyPropagationOptimizer because it can get rid of statements like `v =
+    // v`, where v is a variable.
+    run<SelfAssignOptimizer>(m);
 
-	// VarDefForLoopOptimizer and VarDefStmtOptimizer are utilized also if the
-	// output is Python because in this way, we may emit addresses of
-	// variables, which would be impossible if this optimization is not done.
-	// Indeed, recall that in Python, we do not emit definitions without an
-	// initializer, so if we didn't move the definitions to the usages, there
-	// wouldn't be initializers.
-	run<VarDefForLoopOptimizer>(m);
-	run<VarDefStmtOptimizer>(m, va);
+    // VarDefForLoopOptimizer and VarDefStmtOptimizer are utilized also if the
+    // output is Python because in this way, we may emit addresses of
+    // variables, which would be impossible if this optimization is not done.
+    // Indeed, recall that in Python, we do not emit definitions without an
+    // initializer, so if we didn't move the definitions to the usages, there
+    // wouldn't be initializers.
+    run<VarDefForLoopOptimizer>(m);
+    run<VarDefStmtOptimizer>(m, va);
 
-	run<EmptyStmtOptimizer>(m);
-	run<GotoStmtOptimizer>(m);
+    run<EmptyStmtOptimizer>(m);
+    run<GotoStmtOptimizer>(m);
 
-	// SimplifyArithmExprOptimizer should be run at the end to produce the most
-	// readable output.
-	run<SimplifyArithmExprOptimizer>(m, arithmExprEvaluator);
+    // SimplifyArithmExprOptimizer should be run at the end to produce the most
+    // readable output.
+    run<SimplifyArithmExprOptimizer>(m, arithmExprEvaluator);
 
-	// DeadCodeOptimizer should be run at the end because it is better when
-	// SimplifyArithmExprOptimizer optimizes expressions in conditions and then
-	// DeadCodeOptimizer is called. The same holds for
-	// DerefToArrayIndexOptimizer and IfToSwitchOptimizer.
-	run<DeadCodeOptimizer>(m, arithmExprEvaluator);
-	run<DerefToArrayIndexOptimizer>(m);
-	run<IfToSwitchOptimizer>(m, va);
+    // DeadCodeOptimizer should be run at the end because it is better when
+    // SimplifyArithmExprOptimizer optimizes expressions in conditions and then
+    // DeadCodeOptimizer is called. The same holds for
+    // DerefToArrayIndexOptimizer and IfToSwitchOptimizer.
+    run<DeadCodeOptimizer>(m, arithmExprEvaluator);
+    run<DerefToArrayIndexOptimizer>(m);
+    run<IfToSwitchOptimizer>(m, va);
 
-	//
-	// Perform final, HLL-dependent optimizations.
-	//
-	run<CCastOptimizer>(m);
-	run<CArrayArgOptimizer>(m);
+    //
+    // Perform final, HLL-dependent optimizations.
+    //
+    run<CCastOptimizer>(m);
+    run<CArrayArgOptimizer>(m);
 }
 
 /**
@@ -255,49 +255,49 @@ void OptimizerManager::optimize(ShPtr<Module> m) {
 *        false otherwise.
 */
 bool OptimizerManager::optShouldBeRun(const std::string &optId) const {
-	if (hasItem(disabledOpts, optId)) {
-		// The optimization is disabled.
-		return false;
-	}
+    if (hasItem(disabledOpts, optId)) {
+        // The optimization is disabled.
+        return false;
+    }
 
-	if (hasItem(enabledOpts, optId)) {
-		// The optimization is enabled.
-		return true;
-	}
+    if (hasItem(enabledOpts, optId)) {
+        // The optimization is enabled.
+        return true;
+    }
 
-	return enabledOpts.empty();
+    return enabledOpts.empty();
 }
 
 /**
 * @brief Runs the given optimizer provided that it should be run.
 */
 void OptimizerManager::runOptimizerProvidedItShouldBeRun(ShPtr<Optimizer> optimizer) {
-	const std::string OPT_ID = optimizer->getId();
-	if (!optShouldBeRun(OPT_ID)) {
-		return;
-	}
+    const std::string OPT_ID = optimizer->getId();
+    if (!optShouldBeRun(OPT_ID)) {
+        return;
+    }
 
-	printOptimization(OPT_ID);
+    printOptimization(OPT_ID);
 
-	if (recoverFromOutOfMemory) {
-		// Some optimizations, most notable CopyPropagation, may run out of
-		// memory on huge inputs. We try to recover from such situations by
-		// catching std::bad_alloc, waiting a little bit, and then continuing.
-		// This is a last-resort solution; a better fix would be to lower the
-		// memory requirements of the optimizations, or to generate smaller
-		// code in the first place.
-		try {
-			optimizer->optimize();
-		} catch (const std::bad_alloc &) {
-			Log::error() << Log::Warning << "out of memory; trying to recover" << std::endl;
-			std::this_thread::sleep_for(std::chrono::seconds(1));
-		}
-	} else {
-		// Just run the optimizer and let std::bad_alloc propagate.
-		optimizer->optimize();
-	}
+    if (recoverFromOutOfMemory) {
+        // Some optimizations, most notable CopyPropagation, may run out of
+        // memory on huge inputs. We try to recover from such situations by
+        // catching std::bad_alloc, waiting a little bit, and then continuing.
+        // This is a last-resort solution; a better fix would be to lower the
+        // memory requirements of the optimizations, or to generate smaller
+        // code in the first place.
+        try {
+            optimizer->optimize();
+        } catch (const std::bad_alloc &) {
+            Log::error() << Log::Warning << "out of memory; trying to recover" << std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    } else {
+        // Just run the optimizer and let std::bad_alloc propagate.
+        optimizer->optimize();
+    }
 
-	backendRunOpts.insert(OPT_ID);
+    backendRunOpts.insert(OPT_ID);
 }
 
 /**
@@ -307,9 +307,9 @@ void OptimizerManager::runOptimizerProvidedItShouldBeRun(ShPtr<Optimizer> optimi
 * If @c enableDebug is @c false, this function does nothing.
 */
 void OptimizerManager::printOptimization(const std::string &optId) const {
-	if (enableDebug) {
-		Log::phase("running "s + optId + OPT_SUFFIX, Log::SubPhase);
-	}
+    if (enableDebug) {
+        Log::phase("running "s + optId + OPT_SUFFIX, Log::SubPhase);
+    }
 }
 
 /**
@@ -317,22 +317,22 @@ void OptimizerManager::printOptimization(const std::string &optId) const {
 *        @c false otherwise.
 */
 bool OptimizerManager::shouldSecondCopyPropagationBeRun() const {
-	// TODO What if the name of the optimization changes? Should this ID be
-	//      taken from somewhere else?
-	const std::string COPY_PROP_ID = "CopyPropagation";
+    // TODO What if the name of the optimization changes? Should this ID be
+    //      taken from somewhere else?
+    const std::string COPY_PROP_ID = "CopyPropagation";
 
-	// The second pass of CopyPropagation should be run only if
-	//  (1) CopyPropagation is enabled;
-	if (!optShouldBeRun(COPY_PROP_ID)) {
-		// It is disabled.
-		return false;
-	}
-	//  (2) if CopyPropagation was run, then check that at least one different
-	//      optimization was run.
-	if (hasItem(backendRunOpts, COPY_PROP_ID)) {
-		return backendRunOpts.size() > 1;
-	}
-	return true;
+    // The second pass of CopyPropagation should be run only if
+    //  (1) CopyPropagation is enabled;
+    if (!optShouldBeRun(COPY_PROP_ID)) {
+        // It is disabled.
+        return false;
+    }
+    //  (2) if CopyPropagation was run, then check that at least one different
+    //      optimization was run.
+    if (hasItem(backendRunOpts, COPY_PROP_ID)) {
+        return backendRunOpts.size() > 1;
+    }
+    return true;
 }
 
 /**
@@ -351,9 +351,9 @@ bool OptimizerManager::shouldSecondCopyPropagationBeRun() const {
 */
 template<typename Optimization, typename... Args>
 void OptimizerManager::run(ShPtr<Module> m, Args &&... args) {
-	auto optimizer = std::make_shared<Optimization>(m,
-		std::forward<Args>(args)...);
-	runOptimizerProvidedItShouldBeRun(optimizer);
+    auto optimizer = std::make_shared<Optimization>(m,
+                     std::forward<Args>(args)...);
+    runOptimizerProvidedItShouldBeRun(optimizer);
 }
 
 } // namespace llvmir2hll

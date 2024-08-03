@@ -62,473 +62,473 @@ const int EXIT_BAD_ALLOC = 135;
 
 class ProgramOptions
 {
-	public:
-		std::string programName;
-		retdec::config::Config& config;
-		retdec::config::Parameters& params;
-		std::list<std::string> _argv;
+public:
+    std::string programName;
+    retdec::config::Config& config;
+    retdec::config::Parameters& params;
+    std::list<std::string> _argv;
 
-		std::string mode = "bin";
-		uint64_t bitSize = 32;
-		std::string arExtractPath;
-		std::string arName;
-		std::optional<uint64_t> arIdx;
+    std::string mode = "bin";
+    uint64_t bitSize = 32;
+    std::string arExtractPath;
+    std::string arName;
+    std::optional<uint64_t> arIdx;
 
-		bool cleanup = false;
-		std::set<std::string> toClean;
+    bool cleanup = false;
+    std::set<std::string> toClean;
 
-	public:
-		ProgramOptions(
-				int argc,
-				char *argv[],
-				retdec::config::Config& c,
-				retdec::config::Parameters& p);
+public:
+    ProgramOptions(
+        int argc,
+        char *argv[],
+        retdec::config::Config& c,
+        retdec::config::Parameters& p);
 
-		void load();
+    void load();
 
-	private:
-		void loadOption(std::list<std::string>::iterator& i);
-		bool isParam(
-				std::list<std::string>::iterator i,
-				const std::string& shortp,
-				const std::string& longp = std::string());
-		std::string getParamOrDie(std::list<std::string>::iterator& i);
-		void printHelpAndDie();
-		void afterLoad();
-		std::string checkFile(
-				const std::string& path,
-				const std::string& errorMsgPrefix);
+private:
+    void loadOption(std::list<std::string>::iterator& i);
+    bool isParam(
+        std::list<std::string>::iterator i,
+        const std::string& shortp,
+        const std::string& longp = std::string());
+    std::string getParamOrDie(std::list<std::string>::iterator& i);
+    void printHelpAndDie();
+    void afterLoad();
+    std::string checkFile(
+        const std::string& path,
+        const std::string& errorMsgPrefix);
 };
 
 ProgramOptions::ProgramOptions(
-		int argc,
-		char *argv[],
-		retdec::config::Config& c,
-		retdec::config::Parameters& p)
-		: config(c)
-		, params(p)
+    int argc,
+    char *argv[],
+    retdec::config::Config& c,
+    retdec::config::Parameters& p)
+    : config(c)
+    , params(p)
 {
-	if (argc > 0)
-	{
-		programName = argv[0];
-	}
+    if (argc > 0)
+    {
+        programName = argv[0];
+    }
 
-	for (int i = 1; i < argc; ++i)
-	{
-		_argv.push_back(argv[i]);
-	}
+    for (int i = 1; i < argc; ++i)
+    {
+        _argv.push_back(argv[i]);
+    }
 }
 
 void ProgramOptions::load()
 {
-	for (auto i = _argv.begin(); i != _argv.end();)
-	{
-		// Load config if specified.
-		if (isParam(i, "", "--config"))
-		{
-			auto backup = config.parameters;
-			auto file = getParamOrDie(i);
-			file = checkFile(file, "[--config]");
+    for (auto i = _argv.begin(); i != _argv.end();)
+    {
+        // Load config if specified.
+        if (isParam(i, "", "--config"))
+        {
+            auto backup = config.parameters;
+            auto file = getParamOrDie(i);
+            file = checkFile(file, "[--config]");
 
-			try
-			{
-				config = retdec::config::Config::fromFile(file);
-			}
-			catch (const retdec::config::ParseException& e)
-			{
-				throw std::runtime_error(
-					"[--config] loading of config failed: "
-					+ std::string(e.what())
-				);
-			}
+            try
+            {
+                config = retdec::config::Config::fromFile(file);
+            }
+            catch (const retdec::config::ParseException& e)
+            {
+                throw std::runtime_error(
+                    "[--config] loading of config failed: "
+                    + std::string(e.what())
+                );
+            }
 
-			// TODO:
-			// This redefines all the params from the loaded config.
-			// Maybe we should do some kind of merge.
-			// But it is hard to know what was defined, what was not,
-			// and which value to prefer.
-			config.parameters = backup;
-		}
-		++i;
-	}
+            // TODO:
+            // This redefines all the params from the loaded config.
+            // Maybe we should do some kind of merge.
+            // But it is hard to know what was defined, what was not,
+            // and which value to prefer.
+            config.parameters = backup;
+        }
+        ++i;
+    }
 
-	for (auto i = _argv.begin(); i != _argv.end();)
-	{
-		loadOption(i);
-		if (i != _argv.end())
-		{
-			++i;
-		}
-	}
+    for (auto i = _argv.begin(); i != _argv.end();)
+    {
+        loadOption(i);
+        if (i != _argv.end())
+        {
+            ++i;
+        }
+    }
 
-	afterLoad();
+    afterLoad();
 }
 
 void ProgramOptions::loadOption(std::list<std::string>::iterator& i)
 {
-	std::string c = *i;
+    std::string c = *i;
 
-	if (isParam(i, "-h", "--help"))
-	{
-		printHelpAndDie();
-	}
-	else if (isParam(i, "", "--version"))
-	{
-		Log::info() << retdec::utils::version::getVersionStringLong() << "\n";
-		exit(EXIT_SUCCESS);
-	}
-	else if (isParam(i, "", "--print-after-all"))
-	{
-		llvm::StringMap<llvm::cl::Option*> &opts =
-				llvm::cl::getRegisteredOptions();
+    if (isParam(i, "-h", "--help"))
+    {
+        printHelpAndDie();
+    }
+    else if (isParam(i, "", "--version"))
+    {
+        Log::info() << retdec::utils::version::getVersionStringLong() << "\n";
+        exit(EXIT_SUCCESS);
+    }
+    else if (isParam(i, "", "--print-after-all"))
+    {
+        llvm::StringMap<llvm::cl::Option*> &opts =
+            llvm::cl::getRegisteredOptions();
 
-		auto* paa = static_cast<llvm::cl::opt<bool>*>(
-					opts["print-after-all"]
-		);
-		paa->setInitialValue(true);
-	}
-	else if (isParam(i, "", "--print-before-all"))
-	{
-		llvm::StringMap<llvm::cl::Option*> &opts =
-				llvm::cl::getRegisteredOptions();
+        auto* paa = static_cast<llvm::cl::opt<bool>*>(
+                        opts["print-after-all"]
+                    );
+        paa->setInitialValue(true);
+    }
+    else if (isParam(i, "", "--print-before-all"))
+    {
+        llvm::StringMap<llvm::cl::Option*> &opts =
+            llvm::cl::getRegisteredOptions();
 
-		auto* paa = static_cast<llvm::cl::opt<bool>*>(
-				opts["print-before-all"]
-		);
-		paa->setInitialValue(true);
-	}
-	else if (isParam(i, "-m", "--mode"))
-	{
-		auto m = getParamOrDie(i);
-		if (!(m == "bin" || m == "raw"))
-		{
-			throw std::runtime_error(
-				"[-m|--mode] unknown mode: " + m
-			);
-		}
-		mode = m;
-	}
-	else if (isParam(i, "-b", "--bit-size"))
-	{
-		auto val = getParamOrDie(i);
-		try
-		{
-			bitSize = std::stoull(val);
-			if (!(bitSize == 16 || bitSize == 32 || bitSize == 64))
-			{
-				throw std::runtime_error("");
-			}
-		}
-		catch (...)
-		{
-			throw std::runtime_error(
-				"[-b|--bit-size] invalid value: " + val
-			);
-		}
-	}
-	else if (isParam(i, "-a", "--arch"))
-	{
-		auto a = getParamOrDie(i);
-		if (!(a == "mips"
-				|| a == "pic32"
-				|| a == "arm"
-				|| a == "thumb"
-				|| a == "arm64"
-				|| a == "powerpc"
-				|| a == "x86"
-				|| a == "x86-64"))
-		{
-			throw std::runtime_error(
-				"[-a|--arch] unknown architecture: " + a
-			);
-		}
-		config.architecture.setName(a);
-	}
-	else if (isParam(i, "-e", "--endian"))
-	{
-		auto e = getParamOrDie(i);
-		if (e == "little")
-		{
-			config.architecture.setIsEndianLittle();
-		}
-		else if (e == "big")
-		{
-			config.architecture.setIsEndianBig();
-		}
-		else
-		{
-			throw std::runtime_error(
-				"[-e|--endian] unknown endian: " + e
-			);
-		}
-	}
-	else if (isParam(i, "-f", "--output-format"))
-	{
-		auto of = getParamOrDie(i);
-		if (!(of == "plain" || of == "json" || of == "json-human"))
-		{
-			throw std::runtime_error(
-				"[-f|--output-format] unknown output format: " + of
-			);
-		}
-		config.parameters.setOutputFormat(of);
-	}
-	else if (isParam(i, "", "--max-memory"))
-	{
-		auto val = getParamOrDie(i);
-		try
-		{
-			params.setMaxMemoryLimit(std::stoull(val));
-			params.setIsMaxMemoryLimitHalfRam(false);
-		}
-		catch (...)
-		{
-			throw std::runtime_error(
-				"[--max-memory] invalid value: " + val
-			);
-		}
-	}
-	else if (isParam(i, "", "--no-memory-limit"))
-	{
-		params.setMaxMemoryLimit(0);
-		params.setIsMaxMemoryLimitHalfRam(false);
-	}
-	else if (isParam(i, "-o", "--output"))
-	{
-		std::string out = getParamOrDie(i);
-		params.setOutputFile(out);
+        auto* paa = static_cast<llvm::cl::opt<bool>*>(
+                        opts["print-before-all"]
+                    );
+        paa->setInitialValue(true);
+    }
+    else if (isParam(i, "-m", "--mode"))
+    {
+        auto m = getParamOrDie(i);
+        if (!(m == "bin" || m == "raw"))
+        {
+            throw std::runtime_error(
+                "[-m|--mode] unknown mode: " + m
+            );
+        }
+        mode = m;
+    }
+    else if (isParam(i, "-b", "--bit-size"))
+    {
+        auto val = getParamOrDie(i);
+        try
+        {
+            bitSize = std::stoull(val);
+            if (!(bitSize == 16 || bitSize == 32 || bitSize == 64))
+            {
+                throw std::runtime_error("");
+            }
+        }
+        catch (...)
+        {
+            throw std::runtime_error(
+                "[-b|--bit-size] invalid value: " + val
+            );
+        }
+    }
+    else if (isParam(i, "-a", "--arch"))
+    {
+        auto a = getParamOrDie(i);
+        if (!(a == "mips"
+                || a == "pic32"
+                || a == "arm"
+                || a == "thumb"
+                || a == "arm64"
+                || a == "powerpc"
+                || a == "x86"
+                || a == "x86-64"))
+        {
+            throw std::runtime_error(
+                "[-a|--arch] unknown architecture: " + a
+            );
+        }
+        config.architecture.setName(a);
+    }
+    else if (isParam(i, "-e", "--endian"))
+    {
+        auto e = getParamOrDie(i);
+        if (e == "little")
+        {
+            config.architecture.setIsEndianLittle();
+        }
+        else if (e == "big")
+        {
+            config.architecture.setIsEndianBig();
+        }
+        else
+        {
+            throw std::runtime_error(
+                "[-e|--endian] unknown endian: " + e
+            );
+        }
+    }
+    else if (isParam(i, "-f", "--output-format"))
+    {
+        auto of = getParamOrDie(i);
+        if (!(of == "plain" || of == "json" || of == "json-human"))
+        {
+            throw std::runtime_error(
+                "[-f|--output-format] unknown output format: " + of
+            );
+        }
+        config.parameters.setOutputFormat(of);
+    }
+    else if (isParam(i, "", "--max-memory"))
+    {
+        auto val = getParamOrDie(i);
+        try
+        {
+            params.setMaxMemoryLimit(std::stoull(val));
+            params.setIsMaxMemoryLimitHalfRam(false);
+        }
+        catch (...)
+        {
+            throw std::runtime_error(
+                "[--max-memory] invalid value: " + val
+            );
+        }
+    }
+    else if (isParam(i, "", "--no-memory-limit"))
+    {
+        params.setMaxMemoryLimit(0);
+        params.setIsMaxMemoryLimitHalfRam(false);
+    }
+    else if (isParam(i, "-o", "--output"))
+    {
+        std::string out = getParamOrDie(i);
+        params.setOutputFile(out);
 
-		auto lastDot = out.find_last_of('.');
-		if (lastDot != std::string::npos)
-		{
-			out = out.substr(0, lastDot);
-		}
-		params.setOutputAsmFile(out + ".dsm");
-		params.setOutputBitcodeFile(out + ".bc");
-		params.setOutputLlvmirFile(out + ".ll");
-		params.setOutputConfigFile(out + ".config.json");
-		params.setOutputUnpackedFile(out + "-unpacked");
-		arExtractPath = out + "-extracted";
-	}
-	else if (isParam(i, "-k", "--keep-unreachable-funcs"))
-	{
-		params.setIsKeepAllFunctions(true);
-	}
-	else if (isParam(i, "-p", "--pdb"))
-	{
-		std::string pdb = checkFile(getParamOrDie(i), "[-p|--pdb]");
-		config.parameters.setInputPdbFile(pdb);
-	}
-	else if (isParam(i, "", "--select-ranges"))
-	{
-		std::stringstream ranges(getParamOrDie(i));
-		while(ranges.good())
-		{
-			std::string range;
-			getline(ranges, range, ',' );
-			auto r = retdec::common::stringToAddrRange(range);
-			if (r.getStart().isUndefined() || r.getEnd().isUndefined())
-			{
-				throw std::runtime_error(
-					"[--select-ranges] invalid range: " + range
-				);
-			}
-			params.selectedRanges.insert(r);
-			params.setIsKeepAllFunctions(true);
-		}
-	}
-	else if (isParam(i, "", "--select-functions"))
-	{
-		std::stringstream funcs(getParamOrDie(i));
-		while(funcs.good())
-		{
-			std::string func;
-			getline(funcs, func, ',' );
-			if (!func.empty())
-			{
-				params.selectedFunctions.insert(func);
-				params.setIsKeepAllFunctions(true);
-			}
-		}
-	}
-	else if (isParam(i, "", "--select-decode-only"))
-	{
-		params.setIsSelectedDecodeOnly(true);
-	}
-	else if (isParam(i, "", "--raw-section-vma"))
-	{
-		auto val = getParamOrDie(i);
-		retdec::common::Address addr(val);
-		if (addr.isUndefined())
-		{
-			throw std::runtime_error(
-				"[--raw-section-vma] invalid address: " + val
-			);
-		}
-		params.setSectionVMA(addr);
-	}
-	else if (isParam(i, "", "--raw-entry-point"))
-	{
-		auto val = getParamOrDie(i);
-		retdec::common::Address addr(val);
-		if (addr.isUndefined())
-		{
-			throw std::runtime_error(
-				"[--raw-entry-point] invalid address: " + val
-			);
-		}
-		params.setEntryPoint(addr);
-	}
-	else if (isParam(i, "", "--cleanup"))
-	{
-		cleanup = true;
-	}
-	else if (isParam(i, "", "--config"))
-	{
-		getParamOrDie(i);
-		// ignore: it was already processed
-	}
-	else if (isParam(i, "", "--disable-static-code-detection"))
-	{
-		params.setIsDetectStaticCode(false);
-	}
-	else if (isParam(i, "", "--backend-disabled-opts"))
-	{
-		params.setBackendDisabledOpts(getParamOrDie(i));
-	}
-	else if (isParam(i, "", "--backend-enabled-opts"))
-	{
-		params.setBackendEnabledOpts(getParamOrDie(i));
-	}
-	else if (isParam(i, "", "--backend-call-info-obtainer"))
-	{
-		auto n = getParamOrDie(i);
-		if (!(n == "optim" || n == "pessim"))
-		{
-			throw std::runtime_error(
-				"[--backend-call-info-obtainer] unknown name: " + n
-			);
-		}
-		params.setBackendCallInfoObtainer(n);
-	}
-	else if (isParam(i, "", "--backend-var-renamer"))
-	{
-		auto s = getParamOrDie(i);
-		if (!(s == "address"
-				|| s == "hungarian"
-				|| s == "readable"
-				|| s == "simple"
-				|| s == "unified"))
-		{
-			throw std::runtime_error(
-				"[--backend-var-renamer] unknown style: " + s
-			);
-		}
-		params.setBackendVarRenamer(s);
-	}
-	else if (isParam(i, "", "--backend-no-opts"))
-	{
-		params.setIsBackendNoOpts(true);
-	}
-	else if (isParam(i, "", "--backend-emit-cfg"))
-	{
-		params.setIsBackendEmitCfg(true);
-	}
-	else if (isParam(i, "", "--backend-emit-cg"))
-	{
-		params.setIsBackendEmitCg(true);
-	}
-	else if (isParam(i, "", "--backend-keep-all-brackets"))
-	{
-		params.setIsBackendKeepAllBrackets(true);
-	}
-	else if (isParam(i, "", "--backend-keep-library-funcs"))
-	{
-		params.setIsBackendKeepLibraryFuncs(true);
-	}
-	else if (isParam(i, "", "--backend-no-time-varying-info"))
-	{
-		params.setIsBackendNoTimeVaryingInfo(true);
-	}
-	else if (isParam(i, "", "--backend-no-var-renaming"))
-	{
-		params.setIsBackendNoVarRenaming(true);
-	}
-	else if (isParam(i, "", "--backend-no-compound-operators"))
-	{
-		params.setIsBackendNoCompoundOperators(true);
-	}
-	else if (isParam(i, "", "--backend-no-symbolic-names"))
-	{
-		params.setIsBackendNoSymbolicNames(true);
-	}
-	else if (isParam(i, "", "--ar-index"))
-	{
-		if (!arName.empty())
-		{
-			throw std::runtime_error(
-				"[--ar-index] and [--ar-name] are mutually exclusive, "
-				"use only one"
-			);
-		}
+        auto lastDot = out.find_last_of('.');
+        if (lastDot != std::string::npos)
+        {
+            out = out.substr(0, lastDot);
+        }
+        params.setOutputAsmFile(out + ".dsm");
+        params.setOutputBitcodeFile(out + ".bc");
+        params.setOutputLlvmirFile(out + ".ll");
+        params.setOutputConfigFile(out + ".config.json");
+        params.setOutputUnpackedFile(out + "-unpacked");
+        arExtractPath = out + "-extracted";
+    }
+    else if (isParam(i, "-k", "--keep-unreachable-funcs"))
+    {
+        params.setIsKeepAllFunctions(true);
+    }
+    else if (isParam(i, "-p", "--pdb"))
+    {
+        std::string pdb = checkFile(getParamOrDie(i), "[-p|--pdb]");
+        config.parameters.setInputPdbFile(pdb);
+    }
+    else if (isParam(i, "", "--select-ranges"))
+    {
+        std::stringstream ranges(getParamOrDie(i));
+        while(ranges.good())
+        {
+            std::string range;
+            getline(ranges, range, ',' );
+            auto r = retdec::common::stringToAddrRange(range);
+            if (r.getStart().isUndefined() || r.getEnd().isUndefined())
+            {
+                throw std::runtime_error(
+                    "[--select-ranges] invalid range: " + range
+                );
+            }
+            params.selectedRanges.insert(r);
+            params.setIsKeepAllFunctions(true);
+        }
+    }
+    else if (isParam(i, "", "--select-functions"))
+    {
+        std::stringstream funcs(getParamOrDie(i));
+        while(funcs.good())
+        {
+            std::string func;
+            getline(funcs, func, ',' );
+            if (!func.empty())
+            {
+                params.selectedFunctions.insert(func);
+                params.setIsKeepAllFunctions(true);
+            }
+        }
+    }
+    else if (isParam(i, "", "--select-decode-only"))
+    {
+        params.setIsSelectedDecodeOnly(true);
+    }
+    else if (isParam(i, "", "--raw-section-vma"))
+    {
+        auto val = getParamOrDie(i);
+        retdec::common::Address addr(val);
+        if (addr.isUndefined())
+        {
+            throw std::runtime_error(
+                "[--raw-section-vma] invalid address: " + val
+            );
+        }
+        params.setSectionVMA(addr);
+    }
+    else if (isParam(i, "", "--raw-entry-point"))
+    {
+        auto val = getParamOrDie(i);
+        retdec::common::Address addr(val);
+        if (addr.isUndefined())
+        {
+            throw std::runtime_error(
+                "[--raw-entry-point] invalid address: " + val
+            );
+        }
+        params.setEntryPoint(addr);
+    }
+    else if (isParam(i, "", "--cleanup"))
+    {
+        cleanup = true;
+    }
+    else if (isParam(i, "", "--config"))
+    {
+        getParamOrDie(i);
+        // ignore: it was already processed
+    }
+    else if (isParam(i, "", "--disable-static-code-detection"))
+    {
+        params.setIsDetectStaticCode(false);
+    }
+    else if (isParam(i, "", "--backend-disabled-opts"))
+    {
+        params.setBackendDisabledOpts(getParamOrDie(i));
+    }
+    else if (isParam(i, "", "--backend-enabled-opts"))
+    {
+        params.setBackendEnabledOpts(getParamOrDie(i));
+    }
+    else if (isParam(i, "", "--backend-call-info-obtainer"))
+    {
+        auto n = getParamOrDie(i);
+        if (!(n == "optim" || n == "pessim"))
+        {
+            throw std::runtime_error(
+                "[--backend-call-info-obtainer] unknown name: " + n
+            );
+        }
+        params.setBackendCallInfoObtainer(n);
+    }
+    else if (isParam(i, "", "--backend-var-renamer"))
+    {
+        auto s = getParamOrDie(i);
+        if (!(s == "address"
+                || s == "hungarian"
+                || s == "readable"
+                || s == "simple"
+                || s == "unified"))
+        {
+            throw std::runtime_error(
+                "[--backend-var-renamer] unknown style: " + s
+            );
+        }
+        params.setBackendVarRenamer(s);
+    }
+    else if (isParam(i, "", "--backend-no-opts"))
+    {
+        params.setIsBackendNoOpts(true);
+    }
+    else if (isParam(i, "", "--backend-emit-cfg"))
+    {
+        params.setIsBackendEmitCfg(true);
+    }
+    else if (isParam(i, "", "--backend-emit-cg"))
+    {
+        params.setIsBackendEmitCg(true);
+    }
+    else if (isParam(i, "", "--backend-keep-all-brackets"))
+    {
+        params.setIsBackendKeepAllBrackets(true);
+    }
+    else if (isParam(i, "", "--backend-keep-library-funcs"))
+    {
+        params.setIsBackendKeepLibraryFuncs(true);
+    }
+    else if (isParam(i, "", "--backend-no-time-varying-info"))
+    {
+        params.setIsBackendNoTimeVaryingInfo(true);
+    }
+    else if (isParam(i, "", "--backend-no-var-renaming"))
+    {
+        params.setIsBackendNoVarRenaming(true);
+    }
+    else if (isParam(i, "", "--backend-no-compound-operators"))
+    {
+        params.setIsBackendNoCompoundOperators(true);
+    }
+    else if (isParam(i, "", "--backend-no-symbolic-names"))
+    {
+        params.setIsBackendNoSymbolicNames(true);
+    }
+    else if (isParam(i, "", "--ar-index"))
+    {
+        if (!arName.empty())
+        {
+            throw std::runtime_error(
+                "[--ar-index] and [--ar-name] are mutually exclusive, "
+                "use only one"
+            );
+        }
 
-		auto val = getParamOrDie(i);
-		try
-		{
-			arIdx = std::stoull(val);
-		}
-		catch (...)
-		{
-			throw std::runtime_error(
-				"[--ar-index] invalid index: " + val
-			);
-		}
-	}
-	else if (isParam(i, "", "--ar-name"))
-	{
-		if (arIdx.has_value())
-		{
-			throw std::runtime_error(
-				"[--ar-name] and [--ar-index] are mutually exclusive, "
-				"use only one"
-			);
-		}
+        auto val = getParamOrDie(i);
+        try
+        {
+            arIdx = std::stoull(val);
+        }
+        catch (...)
+        {
+            throw std::runtime_error(
+                "[--ar-index] invalid index: " + val
+            );
+        }
+    }
+    else if (isParam(i, "", "--ar-name"))
+    {
+        if (arIdx.has_value())
+        {
+            throw std::runtime_error(
+                "[--ar-name] and [--ar-index] are mutually exclusive, "
+                "use only one"
+            );
+        }
 
-		arName = getParamOrDie(i);
-	}
-	else if (isParam(i, "", "--static-code-sigfile"))
-	{
-		auto file = checkFile(getParamOrDie(i), "[--static-code-sigfile]");
-		params.userStaticSignaturePaths.insert(file);
-	}
-	else if (isParam(i, "", "--timeout"))
-	{
-		auto t = getParamOrDie(i);
-		try
-		{
-			params.setTimeout(std::stoull(t));
-		}
-		catch (...)
-		{
-			throw std::runtime_error(
-				"[--timeout] invalid timeout value: " + t
-			);
-		}
-	}
-	else if (isParam(i, "-s", "--silent"))
-	{
-		params.setIsVerboseOutput(false);
-	}
-	// Input file is the only argument that does not have -x or --xyz
-	// before it. But only one input is expected.
-	else if (params.getInputFile().empty())
-	{
-		params.setInputFile(c);
-	}
-	else
-	{
-		printHelpAndDie();
-	}
+        arName = getParamOrDie(i);
+    }
+    else if (isParam(i, "", "--static-code-sigfile"))
+    {
+        auto file = checkFile(getParamOrDie(i), "[--static-code-sigfile]");
+        params.userStaticSignaturePaths.insert(file);
+    }
+    else if (isParam(i, "", "--timeout"))
+    {
+        auto t = getParamOrDie(i);
+        try
+        {
+            params.setTimeout(std::stoull(t));
+        }
+        catch (...)
+        {
+            throw std::runtime_error(
+                "[--timeout] invalid timeout value: " + t
+            );
+        }
+    }
+    else if (isParam(i, "-s", "--silent"))
+    {
+        params.setIsVerboseOutput(false);
+    }
+    // Input file is the only argument that does not have -x or --xyz
+    // before it. But only one input is expected.
+    else if (params.getInputFile().empty())
+    {
+        params.setInputFile(c);
+    }
+    else
+    {
+        printHelpAndDie();
+    }
 }
 
 /**
@@ -536,83 +536,83 @@ void ProgramOptions::loadOption(std::list<std::string>::iterator& i)
  */
 void ProgramOptions::afterLoad()
 {
-	auto in = params.getInputFile();
-	if (params.getOutputAsmFile().empty())
-		params.setOutputAsmFile(in + ".dsm");
-	if (params.getOutputBitcodeFile().empty())
-		params.setOutputBitcodeFile(in + ".bc");
-	if (params.getOutputLlvmirFile().empty())
-		params.setOutputLlvmirFile(in + ".ll");
-	if (params.getOutputConfigFile().empty())
-		params.setOutputConfigFile(in + ".config.json");
-	if (params.getOutputFile().empty())
-	{
-		if (params.getOutputFormat() == "plain")
-			params.setOutputFile(in + ".c");
-		else
-			params.setOutputFile(in + ".c.json");
-	}
-	if (params.getOutputUnpackedFile().empty())
-		params.setOutputUnpackedFile(in + "-unpacked");
-	if (arExtractPath.empty())
-		arExtractPath = in + "-extracted";
+    auto in = params.getInputFile();
+    if (params.getOutputAsmFile().empty())
+        params.setOutputAsmFile(in + ".dsm");
+    if (params.getOutputBitcodeFile().empty())
+        params.setOutputBitcodeFile(in + ".bc");
+    if (params.getOutputLlvmirFile().empty())
+        params.setOutputLlvmirFile(in + ".ll");
+    if (params.getOutputConfigFile().empty())
+        params.setOutputConfigFile(in + ".config.json");
+    if (params.getOutputFile().empty())
+    {
+        if (params.getOutputFormat() == "plain")
+            params.setOutputFile(in + ".c");
+        else
+            params.setOutputFile(in + ".c.json");
+    }
+    if (params.getOutputUnpackedFile().empty())
+        params.setOutputUnpackedFile(in + "-unpacked");
+    if (arExtractPath.empty())
+        arExtractPath = in + "-extracted";
 
-	if (mode == "raw")
-	{
-		if (params.getSectionVMA().isUndefined())
-		{
-			throw std::runtime_error(
-				"[--mode=raw] option --raw-section-vma must be set"
-			);
-		}
-		if (params.getEntryPoint().isUndefined())
-		{
-			throw std::runtime_error(
-				"[--mode=raw] option --raw-entry-point must be set"
-			);
-		}
-		if (config.architecture.isUnknown())
-		{
-			throw std::runtime_error(
-				"[--mode=raw] option -a|--arch must be set"
-			);
-		}
-		if (config.architecture.isEndianUnknown())
-		{
-			throw std::runtime_error(
-				"[--mode=raw] option -e|--endian must be set"
-			);
-		}
+    if (mode == "raw")
+    {
+        if (params.getSectionVMA().isUndefined())
+        {
+            throw std::runtime_error(
+                "[--mode=raw] option --raw-section-vma must be set"
+            );
+        }
+        if (params.getEntryPoint().isUndefined())
+        {
+            throw std::runtime_error(
+                "[--mode=raw] option --raw-entry-point must be set"
+            );
+        }
+        if (config.architecture.isUnknown())
+        {
+            throw std::runtime_error(
+                "[--mode=raw] option -a|--arch must be set"
+            );
+        }
+        if (config.architecture.isEndianUnknown())
+        {
+            throw std::runtime_error(
+                "[--mode=raw] option -e|--endian must be set"
+            );
+        }
 
-		config.fileFormat.setIsRaw();
-		config.fileFormat.setFileClassBits(bitSize);
-		config.architecture.setBitSize(bitSize);
-		params.setIsKeepAllFunctions(true);
-	}
+        config.fileFormat.setIsRaw();
+        config.fileFormat.setFileClassBits(bitSize);
+        config.architecture.setBitSize(bitSize);
+        params.setIsKeepAllFunctions(true);
+    }
 
-	// After everything, input file must be set.
-	if (params.getInputFile().empty())
-	{
-		throw std::runtime_error(
-			"INPUT_FILE not set"
-		);
-	}
+    // After everything, input file must be set.
+    if (params.getInputFile().empty())
+    {
+        throw std::runtime_error(
+            "INPUT_FILE not set"
+        );
+    }
 }
 
 std::string ProgramOptions::checkFile(
-		const std::string& path,
-		const std::string& errorMsgPrefix)
+    const std::string& path,
+    const std::string& errorMsgPrefix)
 {
-	if (!fs::is_regular_file(path))
-	{
-		throw std::runtime_error(errorMsgPrefix + " bad file: " + path);
-	}
-	return fs::absolute(path).string();
+    if (!fs::is_regular_file(path))
+    {
+        throw std::runtime_error(errorMsgPrefix + " bad file: " + path);
+    }
+    return fs::absolute(path).string();
 }
 
 void ProgramOptions::printHelpAndDie()
 {
-	Log::info() << programName << R"(:
+    Log::info() << programName << R"(:
 Mandatory arguments:
 	INPUT_FILE File to decompile.
 General arguments:
