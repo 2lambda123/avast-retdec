@@ -22,9 +22,7 @@
     "maxMemoryLimit": 0,
     "maxMemoryLimitHalfRam": true,
     "ordinalNumDirectory": "./support/ordinals/",
-    "staticSignPaths": [
-      "./support/generic/yara_patterns/static-code/"
-    ],
+    "staticSignPaths": ["./support/generic/yara_patterns/static-code/"],
     "libraryTypeInfoPaths": [
       "./support/generic/types/arm.json",
       "./support/generic/types/cstdlib.json",
